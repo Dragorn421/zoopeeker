@@ -422,6 +422,30 @@ async def peek_command(
         raise
 
 
+async def peekall_command(interaction: discord.Interaction):
+    await interaction.response.send_message("Peeking all...")
+
+    try:
+        discord_user_ids = botconf.discord_user_ids
+        for i, (name, discord_id) in enumerate(discord_user_ids.items()):
+            await interaction.edit_original_response(
+                content=f"Peeking all... {i+1}/{len(discord_user_ids)} {name}"
+            )
+            user = await interaction.client.fetch_user(discord_id)
+            assert user is not None
+            zpk_user = zpk.get_user(discord_id)
+            if zpk_user is None:
+                zpk.add_user(discord_id, user.name, user.display_name)
+            else:
+                zpk.refresh_user_data(zpk_user)
+
+    except:
+        await message_send_exception(interaction.followup, sys.exception())
+        raise
+    finally:
+        await interaction.edit_original_response(content="Peeking all done")
+
+
 DELAY_BETWEEN_DUMPS = datetime.timedelta(minutes=1)
 datetime_next_dump = datetime.datetime.now()
 
@@ -458,12 +482,6 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print("Logged on as", self.user)
 
-        for name, discord_id in botconf.discord_user_ids.items():
-            print(name, discord_id)
-            user = await self.fetch_user(discord_id)
-            assert user is not None
-            zpk.add_user(discord_id, user.name, user.display_name)
-
         self.zpkdr = zoopeeker.ZooPeekerDataRefresher(zpk, self.loop.call_soon)
         self.zpkdr.start()
         # TODO zpkdr.stop()
@@ -481,6 +499,13 @@ class MyClient(discord.Client):
             name="peek",
             description="Take a peek",
             callback=peek_command,
+        )
+        tree.add_command(command)
+
+        command = discord.app_commands.Command(
+            name="peekall",
+            description="Take a peek on everyone",
+            callback=peekall_command,
         )
         tree.add_command(command)
 
