@@ -9,8 +9,8 @@ import datetime
 import traceback
 import sqlite3
 import re
-from typing import Optional
 from pathlib import Path
+from typing import Optional, Literal
 
 import discord
 import emoji
@@ -512,6 +512,30 @@ async def dbdump_command(interaction: discord.Interaction):
         raise
 
 
+async def help_command(
+    interaction: discord.Interaction,
+    topic: Optional[Literal["cpp_context_c", "cpp_context_sql"]],
+):
+    if topic is None:
+        text = (
+            "Data refreshes from the api on /peek or when the bot sees zoo activity.\n"
+            "Todo data comes from the bot spying on `/terminal todo` (if the user and profile are in db already).\n"
+            + "Builtins (via cpp on the query): top, todo"
+        )
+    elif topic == "cpp_context_c":
+        text = f"```c\n{cpp_context}\n```"
+    elif topic == "cpp_context_sql":
+        text = f"```sql\n{cpp_context}\n```"
+
+    if len(text) > MESSAGE_MAX_LEN:
+        await interaction.response.send_message(
+            "(message too long)",
+            file=discord.File(io.StringIO(text), "message.md"),
+        )
+    else:
+        await interaction.response.send_message(text)
+
+
 class MyClient(discord.Client):
     async def on_ready(self):
         print("Logged on as", self.user)
@@ -550,6 +574,14 @@ class MyClient(discord.Client):
         )
         tree.add_command(command)
 
+        command = discord.app_commands.Command(
+            name="help",
+            description="Some usage notes",
+            callback=help_command,
+        )
+        tree.add_command(command)
+
+        print("await tree.sync() ...")
         await tree.sync()
 
         print("Reafy-reafy")
@@ -615,7 +647,7 @@ class MyClient(discord.Client):
 
         now = datetime.datetime.now(datetime.UTC)
         for thing, time in times_by_thing.items():
-            print(thing, "[at]", time, "[in]", time - now)
+            print(user, thing, "[at]", time, "[in]", time - now)
         zpk.set_current_profile_todos(user, times_by_thing)
 
 
