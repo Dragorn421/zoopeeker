@@ -632,11 +632,13 @@ class MyClient(discord.Client):
         lines_upcoming = msg_lines[i_start_upcoming:i_end_upcoming]
         times_by_thing = dict()
         for lu in lines_upcoming:
-            m = re.match(r"^>\s[^\s]*\s([^:]+):[^(]+\(<t:(\d+)>\)$", lu)
+            m = re.match(r"^>\s[^\s]*\s([^:]+):[^(]+(?:\(<t:(\d+)>\))?$", lu)
 
             if m is None:
                 print("Unexpected line format", lu)
                 return
+            if m[2] is None:
+                continue
 
             thing = m[1]
             timestamp_str = m[2]
