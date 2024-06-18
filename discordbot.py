@@ -8,6 +8,7 @@ import io
 import datetime
 import traceback
 import sqlite3
+import re
 from typing import Optional
 
 import discord
@@ -386,10 +387,21 @@ async def zooquery_command(interaction: discord.Interaction, query: str):
             cols: list[str] = [item[0] for item in cur.description]
             data = cur.fetchall()
 
-            view = DataPeekView(query, cols, data)
+            is_magic = False
 
-            wm = await interaction.followup.send(view.render(), view=view, wait=True)
-            view.set_wm(wm)
+            if cols == ["magic_lines"]:
+                text = "\n".join(str(v) for (v,) in data)
+                if len(text) <= MESSAGE_MAX_LEN:
+                    is_magic = True
+                    await interaction.followup.send(text)
+
+            if not is_magic:
+                view = DataPeekView(query, cols, data)
+
+                wm = await interaction.followup.send(
+                    view.render(), view=view, wait=True
+                )
+                view.set_wm(wm)
 
     except:
         await message_send_exception(interaction.followup, sys.exception())
