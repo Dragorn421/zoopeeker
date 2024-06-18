@@ -129,6 +129,13 @@ class DatabaseHandler:
                 FOREIGN KEY("profile_id") REFERENCES "profiles"("profile_id"),
                 FOREIGN KEY("animal_id") REFERENCES "animals"("animal_id")
             );
+            CREATE TABLE "todos" (
+                profile_id   INTEGER NOT NULL,
+                thing        TEXT    NOT NULL,
+                utctimestamp INTEGER NOT NULL,
+                utcdatetime  TEXT    NOT NULL,
+                FOREIGN KEY("profile_id") REFERENCES "profiles"("profile_id")
+            );
             """
         )
 
@@ -295,6 +302,28 @@ class DatabaseHandler:
         )
         self._delete_zoo_animals(cur, profile_id)
         self._insert_zoo_animals(cur, profile_id, animals_amount, animals_amount_now)
+
+    def set_profile_todos(
+        self,
+        profile_id: int,
+        times_by_thing: dict[str, datetime.datetime],
+    ):
+        cur = self.con_rw.cursor()
+        cur.execute("DELETE FROM todos WHERE profile_id = ?", (profile_id,))
+        cur.executemany(
+            "INSERT INTO"
+            " todos (profile_id, thing, utctimestamp, utcdatetime)"
+            " VALUES (?, ?, ?, ?)",
+            (
+                (
+                    profile_id,
+                    thing,
+                    round(time.timestamp()),
+                    time.strftime("%Y-%m-%d %H:%M:%S"),
+                )
+                for thing, time in times_by_thing.items()
+            ),
+        )
 
     def get_user_con(self, user: User):
         user_con = self.user_cons.get(user)
@@ -532,6 +561,25 @@ class ZooPeeker:
                     user.profile_id_by_profile_zoo_id[profile_zoo_id],
                     pd,
                 )
+
+    def set_current_profile_todos(
+        self,
+        user: User,
+        times_by_thing: dict[str, datetime.datetime],
+    ):
+        try:
+            pd = self.zapic_main.get_profile_data(str(user.discord_id))
+        except zooapi.ProfileDataUnavailableError as e:
+            print("Can't set todos for", user, "because", e)
+            return
+        if pd.profile_id not in user.profile_id_by_profile_zoo_id:
+            print(
+                "Trying to set todos for unknown profile (new profile?), aborting", pd
+            )
+            return
+        profile_id = user.profile_id_by_profile_zoo_id[pd.profile_id]
+        with self.dbh.transaction():
+            self.dbh.set_profile_todos(profile_id, times_by_thing)
 
 
 def main():

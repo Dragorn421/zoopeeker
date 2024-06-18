@@ -561,11 +561,48 @@ class MyClient(discord.Client):
                 if user is not None:
                     client.zpkdr.notify_activity(user)
 
+                    self.try_parse_todo(user, message.content)
+
+    def try_parse_todo(self, user: zoopeeker.User, msg: str):
+        msg_lines = msg.splitlines()
+        try:
+            i = msg_lines.index("__**Upcoming Events**__")
+        except ValueError:
+            return
+        else:
+            i_start_upcoming = i + 1
+        try:
+            i_end_upcoming = msg_lines.index("")
+        except ValueError:
+            i_end_upcoming = len(msg_lines)
+        lines_upcoming = msg_lines[i_start_upcoming:i_end_upcoming]
+        times_by_thing = dict()
+        for lu in lines_upcoming:
+            m = re.match(r"^>\s[^\s]*\s([^:]+):[^(]+\(<t:(\d+)>\)$", lu)
+
+            if m is None:
+                print("Unexpected line format", lu)
+                return
+
+            thing = m[1]
+            timestamp_str = m[2]
+            timestamp = int(timestamp_str)
+            time = datetime.datetime.fromtimestamp(timestamp, datetime.UTC)
+
+            times_by_thing[thing] = time
+
+        now = datetime.datetime.now(datetime.UTC)
+        for thing, time in times_by_thing.items():
+            print(thing, "[at]", time, "[in]", time - now)
+        zpk.set_current_profile_todos(user, times_by_thing)
+
 
 intents = discord.Intents.none()
+intents.message_content = True
 intents.guild_messages = True
 client = MyClient(intents=intents)
 
+# https://discord.com/oauth2/authorize?client_id=1230252029235171328&permissions=265280&integration_type=0&scope=bot
 with zoopeeker.DatabaseHandler() as dbh:
     zpk = zoopeeker.ZooPeeker(dbh)
     client.run(botconf.token)

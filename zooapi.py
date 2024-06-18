@@ -182,6 +182,8 @@ class ZooAPIContext:
         self.requests_session = requests.Session()
 
     def get_profile_data(self, id: str):
+        assert isinstance(id, str)
+
         url = get_profile_api_url(id)
 
         res = self.requests_session.get(url)
