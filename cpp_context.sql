@@ -19,16 +19,16 @@
         on animal_id == animal_common                                                                   \
     ) order by score desc
 #define todo \
-    select concat(                  \
-        substr(profile_name,1,2),   \
-        " ",                        \
-        thing,                      \
-        " <t:",                     \
-        utctimestamp,               \
-        ":R>",                      \
-        " (<t:",                    \
-        utctimestamp,               \
-        ":f>)"                      \
+    select (                        \
+        substr(profile_name,1,2)    \
+        || " "                      \
+        || thing                    \
+        || " <t:"                   \
+        || utctimestamp             \
+        || ":R>"                    \
+        || " (<t:"                  \
+        || utctimestamp             \
+        || ":f>)"                   \
     ) as magic_lines                \
     from todos NJ profiles NJ users \
     where user_name == '{discord_user_name}'
