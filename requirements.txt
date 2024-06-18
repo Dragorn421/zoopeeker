@@ -1,3 +1,4 @@
 discord.py==2.3.2
 emoji==2.11.1
 requests==2.31.0
+pcpp==1.30

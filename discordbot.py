@@ -10,12 +10,14 @@ import traceback
 import sqlite3
 import re
 from typing import Optional
+from pathlib import Path
 
 import discord
 import emoji
 
 import botconf
 import zoopeeker
+import pycpp
 
 """
 /zq SQL
@@ -331,11 +333,29 @@ class DataPeekView(discord.ui.View):
         self.n_rows = n
 
 
-async def zooquery_command(interaction: discord.Interaction, query: str):
+cpp_context = (Path(__file__).parent / "cpp_context.sql").read_text()
+
+
+async def zooquery_command(
+    interaction: discord.Interaction,
+    query: str,
+    show_cpp_query: bool = False,
+):
     await interaction.response.defer(thinking=True)
 
     try:
         user_discord = interaction.user
+
+        initial_query = query
+        user_cpp_context = cpp_context.format(
+            discord_user_name=user_discord.name,
+        )
+        try:
+            query = pycpp.my_preprocess(user_cpp_context + "\n" + query)
+        except pycpp.ForbiddenUsage as e:
+            await interaction.followup.send(f"pycpp.ForbiddenUsage: {e}")
+            return
+
         user = zpk.get_user(user_discord.id)
         if user is None:
             user = zpk.add_user(
@@ -372,7 +392,7 @@ async def zooquery_command(interaction: discord.Interaction, query: str):
             msg_frag_query = "\n".join(
                 (
                     "```sql",
-                    query,
+                    query if show_cpp_query else initial_query,
                     "```",
                 )
             )
@@ -391,12 +411,14 @@ async def zooquery_command(interaction: discord.Interaction, query: str):
 
             if cols == ["magic_lines"]:
                 text = "\n".join(str(v) for (v,) in data)
-                if len(text) <= MESSAGE_MAX_LEN:
+                if text != "" and len(text) <= MESSAGE_MAX_LEN:
                     is_magic = True
                     await interaction.followup.send(text)
 
             if not is_magic:
-                view = DataPeekView(query, cols, data)
+                view = DataPeekView(
+                    query if show_cpp_query else initial_query, cols, data
+                )
 
                 wm = await interaction.followup.send(
                     view.render(), view=view, wait=True
