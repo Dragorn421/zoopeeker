@@ -630,27 +630,30 @@ class MyClient(discord.Client):
         except ValueError:
             i_end_upcoming = len(msg_lines)
         lines_upcoming = msg_lines[i_start_upcoming:i_end_upcoming]
-        times_by_thing = dict()
+        todo_things: list[zoopeeker.TodoThing] = []
         for lu in lines_upcoming:
-            m = re.match(r"^>\s[^\s]*\s([^:]+):[^(]+(?:\(<t:(\d+)>\))?$", lu)
+            m = re.match(r"^>\s([^\s]+)\s([^:]+):[^(]+(?:\(<t:(\d+)>\))?$", lu)
 
             if m is None:
                 print("Unexpected line format", lu)
                 return
-            if m[2] is None:
+
+            emoji = m[1]
+            thing = m[2]
+            timestamp_str = m[3]
+
+            if timestamp_str is None:
                 continue
 
-            thing = m[1]
-            timestamp_str = m[2]
             timestamp = int(timestamp_str)
             time = datetime.datetime.fromtimestamp(timestamp, datetime.UTC)
 
-            times_by_thing[thing] = time
+            todo_things.append(zoopeeker.TodoThing(emoji, thing, time))
 
         now = datetime.datetime.now(datetime.UTC)
-        for thing, time in times_by_thing.items():
-            print(user, thing, "[at]", time, "[in]", time - now)
-        zpk.set_current_profile_todos(user, times_by_thing)
+        for t in todo_things:
+            print(user, t.emoji, t.thing, "[at]", t.time, "[in]", t.time - now)
+        zpk.set_current_profile_todos(user, todo_things)
 
 
 intents = discord.Intents.none()

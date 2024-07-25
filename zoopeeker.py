@@ -12,6 +12,7 @@ import threading
 import queue
 import datetime
 import functools
+import dataclasses
 
 import zooapi
 from zooapi import ZooAnimal, ZooAnimalCommon, ZooAnimalRare
@@ -32,6 +33,13 @@ class User:
 
     def __str__(self):
         return f"User<{self.name}>"
+
+
+@dataclasses.dataclass
+class TodoThing:
+    emoji: str
+    thing: str
+    time: datetime.datetime
 
 
 class DatabaseHandlerTransactionCM:
@@ -131,6 +139,7 @@ class DatabaseHandler:
             );
             CREATE TABLE "todos" (
                 profile_id   INTEGER NOT NULL,
+                emoji        TEXT    NOT NULL,
                 thing        TEXT    NOT NULL,
                 utctimestamp INTEGER NOT NULL,
                 utcdatetime  TEXT    NOT NULL,
@@ -306,22 +315,23 @@ class DatabaseHandler:
     def set_profile_todos(
         self,
         profile_id: int,
-        times_by_thing: dict[str, datetime.datetime],
+        todo_things: list[TodoThing],
     ):
         cur = self.con_rw.cursor()
         cur.execute("DELETE FROM todos WHERE profile_id = ?", (profile_id,))
         cur.executemany(
             "INSERT INTO"
-            " todos (profile_id, thing, utctimestamp, utcdatetime)"
-            " VALUES (?, ?, ?, ?)",
+            " todos (profile_id, emoji, thing, utctimestamp, utcdatetime)"
+            " VALUES (?, ?, ?, ?, ?)",
             (
                 (
                     profile_id,
-                    thing,
-                    round(time.timestamp()),
-                    time.strftime("%Y-%m-%d %H:%M:%S"),
+                    _t.emoji,
+                    _t.thing,
+                    round(_t.time.timestamp()),
+                    _t.time.strftime("%Y-%m-%d %H:%M:%S"),
                 )
-                for thing, time in times_by_thing.items()
+                for _t in todo_things
             ),
         )
 
@@ -565,7 +575,7 @@ class ZooPeeker:
     def set_current_profile_todos(
         self,
         user: User,
-        times_by_thing: dict[str, datetime.datetime],
+        todo_things: list[TodoThing],
     ):
         try:
             pd = self.zapic_main.get_profile_data(str(user.discord_id))
@@ -579,7 +589,7 @@ class ZooPeeker:
             return
         profile_id = user.profile_id_by_profile_zoo_id[pd.profile_id]
         with self.dbh.transaction():
-            self.dbh.set_profile_todos(profile_id, times_by_thing)
+            self.dbh.set_profile_todos(profile_id, todo_things)
 
 
 def main():
