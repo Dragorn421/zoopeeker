@@ -164,6 +164,8 @@ class ZooProfileData:
     """ "whale" """
     profile_name: str
     """ "Someone's Zoo Name" """
+    profile_icon: str | None
+    """ e.g. "🐲" or "<:antitrophy:1228932159277109248>" or None """
     animals: dict[ZooAnimal, int]
     """Animal keys may be missing. Values may be 0. Any animal on quest not included in counts."""
     animal_on_quest: ZooAnimalRare | None
@@ -230,6 +232,7 @@ class ZooAPIContext:
                 profile_full_id=data["id"],
                 profile_id=data["profileID"],
                 profile_name=data["name"],
+                profile_icon=data["cosmeticIcon"],
                 animals={
                     ZooAnimal.by_animal_name[data_animal["name"]]: data_animal["amount"]
                     for data_animal in data["animals"]

@@ -115,6 +115,7 @@ class DatabaseHandler:
                 "user_id"        INTEGER NOT NULL,
                 "profile_zoo_id" TEXT    NOT NULL,
                 "profile_name"   TEXT    NOT NULL,
+                "profile_icon"   TEXT    NOT NULL,
                 PRIMARY KEY("profile_id" AUTOINCREMENT),
                 FOREIGN KEY("user_id") REFERENCES "users"("user_id")
             );
@@ -251,15 +252,16 @@ class DatabaseHandler:
         user_id: int,
         profile_zoo_id: str,
         profile_name: str,
+        profile_icon: str,
         animals_amount: dict[ZooAnimal, int],
         animals_amount_now: dict[ZooAnimal, int],
     ):
         cur = self.con_rw.cursor()
         cur.execute(
             "INSERT INTO"
-            " profiles (user_id, profile_zoo_id, profile_name)"
-            " VALUES (?, ?, ?)",
-            (user_id, profile_zoo_id, profile_name),
+            " profiles (user_id, profile_zoo_id, profile_name, profile_icon)"
+            " VALUES (?, ?, ?, ?)",
+            (user_id, profile_zoo_id, profile_name, profile_icon),
         )
         profile_id = cur.lastrowid
 
@@ -301,13 +303,14 @@ class DatabaseHandler:
         self,
         profile_id: int,
         profile_name: str,
+        profile_icon: str,
         animals_amount: dict[ZooAnimal, int],
         animals_amount_now: dict[ZooAnimal, int],
     ):
         cur = self.con_rw.cursor()
         cur.execute(
-            "UPDATE profiles SET profile_name = ? WHERE profile_id = ?",
-            (profile_name, profile_id),
+            "UPDATE profiles SET profile_name = ?, profile_icon = ? WHERE profile_id = ?",
+            (profile_name, profile_icon, profile_id),
         )
         self._delete_zoo_animals(cur, profile_id)
         self._insert_zoo_animals(cur, profile_id, animals_amount, animals_amount_now)
@@ -473,6 +476,7 @@ class ZooPeeker:
                     user_id,
                     profile_zoo_id,
                     "?",
+                    "❔",
                     dict(),
                     dict(),
                 )
@@ -497,12 +501,17 @@ class ZooPeeker:
     def _add_profile(
         self, user_id: int, profile_zoo_id: str, pd: zooapi.ZooProfileData
     ):
+        profile_icon = pd.profile_icon
+        if profile_icon is None:
+            profile_icon = "👤"
+
         animals_amount, animals_amount_now = self._pd_to_amounts(pd)
 
         profile_id = self.dbh.add_profile(
             user_id,
             profile_zoo_id,
             pd.profile_name,
+            profile_icon,
             animals_amount,
             animals_amount_now,
         )
@@ -510,11 +519,16 @@ class ZooPeeker:
         return profile_id
 
     def _update_profile(self, profile_id: int, pd: zooapi.ZooProfileData):
+        profile_icon = pd.profile_icon
+        if profile_icon is None:
+            profile_icon = "👤"
+
         animals_amount, animals_amount_now = self._pd_to_amounts(pd)
 
         profile_id = self.dbh.update_profile(
             profile_id,
             pd.profile_name,
+            profile_icon,
             animals_amount,
             animals_amount_now,
         )
