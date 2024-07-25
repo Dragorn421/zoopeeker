@@ -520,7 +520,7 @@ async def help_command(
         text = (
             "Data refreshes from the api on /peek or when the bot sees zoo activity.\n"
             "Todo data comes from the bot spying on `/terminal todo` (if the user and profile are in db already).\n"
-            + "Builtins (via cpp on the query): top, todo"
+            + "Builtins (via cpp on the query): top(cond), mytop, todo/td, todo_within(delay)/tdw, todo_soon/tds"
         )
     elif topic == "cpp_context_c":
         text = f"```c\n{cpp_context}\n```"
